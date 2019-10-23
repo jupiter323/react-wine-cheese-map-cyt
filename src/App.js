@@ -33,7 +33,7 @@ function App() {
           { 'data': { 'source': 'one', 'target': 'two' }, 'classes': 'red',"selected" : false },
           { 'data': { 'source': 'two', 'target': 'three' } },
           { 'data': { 'source': 'three', 'target': 'four' }, 'classes': 'red' },
-          { 'data': { 'source': 'two', 'target': 'four' } },
+          { 'data': { 'source': 'two', 'target': 'four' },"selected" : true },
         ]}     
         // layout={{ 'name': 'preset' }}
         style={{ 'width': '100%', 'height': '400px' }}
