@@ -9,7 +9,7 @@ function App() {
     <>
       <CytoscapeComponent
         className="App-header"
-        pan={{ x: 100, y: 200 }}
+        pan={{ x: 700, y: 200 }}
         elements={[
           {
             'data': { 'id': 'one', 'label': 'Modified Color' },
@@ -30,7 +30,7 @@ function App() {
             'data': { 'id': 'four', 'label': 'Regular' },
             'position': { 'x': 200, 'y': 200 }
           },
-          { 'data': { 'source': 'one', 'target': 'two' }, 'classes': 'red' },
+          { 'data': { 'source': 'one', 'target': 'two' }, 'classes': 'red',"selected" : false },
           { 'data': { 'source': 'two', 'target': 'three' } },
           { 'data': { 'source': 'three', 'target': 'four' }, 'classes': 'red' },
           { 'data': { 'source': 'two', 'target': 'four' } },
