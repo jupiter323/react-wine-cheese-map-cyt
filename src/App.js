@@ -17,7 +17,7 @@ class App extends React.Component {
       .then(styleJson => {
         console.log(styleJson)
         this.setState({ styleJson })
-      }).catch(err=>{
+      }).catch(err => {
         console.log(err)
       })
   }
@@ -34,39 +34,75 @@ class App extends React.Component {
           selectionType={"single"}
           boxSelectionEnabled={false}
           autoungrabify={true}
-          layout={{ 'name': 'preset','padding':50 }}
-          // style={{ 'width': '100%', 'height': '400px' }}
+          layout={{ 'name': 'preset', 'padding': 50 }}
           stylesheet={[
             {
-              selector:'node[NodeType = "WhiteWine"]',
-              style:{
+              selector: "core",
+              style: {
+                "active-bg-color": "#fff",
+                "active-bg-opacity": 0.333
+              }
+            },
+            {
+              selector: "edge",
+              style: {
+                "curve-style": "haystack",
+                "haystack-radius": 0,
+                "opacity": 0.333,
+                "width": 2,
+                "z-index": 0,
+                "overlay-opacity": 0,
+                "events": "no"
+              }
+            },
+            {
+              selector: "node",
+              style: {
+                "width": 40,
+                "height": 40,
+                "font-size": 10,
+                "font-weight": "bold",
+                "min-zoomed-font-size": 4,
+                "content": "data(name)",
+                "text-valign": "center",
+                "text-halign": "center",
+                "color": "#000",
+                "text-outline-width": 2,
+                "text-outline-color": "#fff",
+                "text-outline-opacity": 1,
+                "overlay-color": "#fff"
+              }
+            },
+            {
+              selector: 'node[NodeType = "WhiteWine"]',
+              style: {
                 "background-color": "white",
                 "text-outline-color": "white"
               }
-            }       
+            }
           ]}
-          // stylesheet={[
-          //   {
-          //     'selector': 'node',
-          //     'style': {
-          //       'content': 'data(label)'
-          //     }
-          //   },
+        // stylesheet={[
+        //   {
+        //     'selector': 'node',
+        //     'style': {
+        //       'content': 'data(label)'
+        //     }
+        //   },
 
-          //   {
-          //     'selector': '.red',
-          //     'style': {
-          //       'background-color': 'red',
-          //       'line-color': 'red'
-          //     }
-          //   },
-          //   {
-          //     'selector': '.triangle',
-          //     'style': {
-          //       'shape': 'triangle'
-          //     }
-          //   }
-          // ]}
+        //   {
+        //     'selector': '.red',
+        //     'style': {
+        //       'background-color': 'red',
+        //       'line-color': 'red'
+        //     }
+        //   },
+        //   {
+        //     'selector': '.triangle',
+        //     'style': {
+        //       'shape': 'triangle'
+        //     }
+        //   }
+        // ]}
         />
       </>
     );
