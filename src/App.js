@@ -21,6 +21,74 @@ class App extends React.Component {
         console.log(err)
       })
   }
+  
+  generateNode = event => {
+    const ele = event.target;
+
+    const isParent = ele.isParent();
+    const isChildless = ele.isChildless();
+    const isChild = ele.isChild();
+    const isOrphan = ele.isOrphan();
+    const renderedPosition = ele.renderedPosition();
+    const relativePosition = ele.relativePosition();
+    const parent = ele.parent();
+    const style = ele.style();
+    // Trim down the element objects to only the data contained
+    const edgesData = ele.connectedEdges().map(ele => {return ele.data()});
+    const childrenData = ele.children().map(ele => {return ele.data()});
+    const ancestorsData = ele.ancestors().map(ele => {return ele.data()});
+    const descendantsData = ele.descendants().map(ele => {return ele.data()});
+    const siblingsData = ele.siblings().map(ele => {return ele.data()});
+
+    const {timeStamp} = event;
+    const {
+      classes,
+      data,
+      grabbable,
+      group,
+      locked,
+      position,
+      selected,
+      selectable
+    } = ele.json();
+
+    let parentData;
+    if (parent) {
+      parentData = parent.data();
+    } else {
+      parentData = null;
+    }
+
+    const nodeObject = {
+      // Nodes attributes
+      edgesData,
+      renderedPosition,
+      timeStamp,
+      // From ele.json()
+      classes,
+      data,
+      grabbable,
+      group,
+      locked,
+      position,
+      selectable,
+      selected,
+      // Compound Nodes additional attributes
+      ancestorsData,
+      childrenData,
+      descendantsData,
+      parentData,
+      siblingsData,
+      isParent,
+      isChildless,
+      isChild,
+      isOrphan,
+      relativePosition,
+      // Styling
+      style
+    };
+    return nodeObject;
+  }
   render() {
     var { styleJson } = this.state
     var elements = data.elements.nodes
@@ -35,6 +103,12 @@ class App extends React.Component {
           boxSelectionEnabled={false}
           autoungrabify={true}
           layout={{ 'name': 'preset', 'padding': 50 }}
+          cy={(cy) => {
+            cy.on('tap', 'node', event => {
+              const nodeObject = this.generateNode(event);
+              console.log('nodeObject:', nodeObject);           
+            })
+          }}
           stylesheet={[
             {
               selector: "core",
@@ -83,35 +157,110 @@ class App extends React.Component {
               }
             },
             {
+              selector: 'node[NodeType = "Cheese"],node[NodeType = "CheeseType"]',
+              style: {
+                "background-color": "#FACD37",
+                "text-outline-color": "#FACD37",
+                "width": "mapData(Quality, 70, 100, 20, 50)",
+                "height": "mapData(Quality, 70, 100, 20, 50)",
+              }
+            },
+            {
               selector: 'node[NodeType = "WhiteWine"]',
               style: {
                 "background-color": "white",
                 "text-outline-color": "white"
               }
+            },
+            {
+              selector: 'edge[interaction = "cw"]',
+              style: {
+                "line-color": "white"
+              }
+            },
+            {
+              selector: 'node[NodeType = "RedWine"]',
+              style: {
+                "background-color": "#DE3128",
+                "text-outline-color": "#DE3128"
+              }
+            },
+            {
+              selector: 'edge[interaction = "cr"]',
+              style: {
+                'line-color': '#DE3128'
+              }
+            },
+            {
+              selector: 'node[NodeType = "Cider"]',
+              style: {
+                'background-color': '#A4EB34',
+                'text-outline-color': '#A4EB34'
+              }
+            },
+            {
+              selector: 'node.highlighted',
+              style: {
+                'min-zoomed-font-size': 0,
+                'z-index': 9999
+              }
+            },
+            {
+              selector: 'edge.highlighted',
+              style: {
+                "opacity": 0.8,
+                "width": 4,
+                "z-index": 9999
+              }
+            },
+            {
+              selector: '.faded',
+              style: {
+                "events": "no"
+              }
+            },
+            {
+              selector: 'node.faded',
+              style: {
+                'opacity': 0.08
+              }
+            },
+            {
+              selector: 'edge.faded',
+              style: {
+                'opacity': 0.06
+              }
+            },
+            {
+              selector: '.hidden',
+              style: {
+                'display': 'none'
+              }
+            },
+            {
+              selector: '.highlighted',
+              style: {
+
+              }
+            },
+            {
+              selector: 'node:selected',
+              style: {
+                'width': 40,
+                'height': 40,
+                'border-color': 'rgb(187, 219, 247)',
+                'border-opacity': 0.5,
+                'border-width': 10
+              }
+            },
+            {
+              selector: '.filtered',
+              style: {
+                'display': 'none'
+              }
             }
           ]}
-        // stylesheet={[
-        //   {
-        //     'selector': 'node',
-        //     'style': {
-        //       'content': 'data(label)'
-        //     }
-        //   },
 
-        //   {
-        //     'selector': '.red',
-        //     'style': {
-        //       'background-color': 'red',
-        //       'line-color': 'red'
-        //     }
-        //   },
-        //   {
-        //     'selector': '.triangle',
-        //     'style': {
-        //       'shape': 'triangle'
-        //     }
-        //   }
-        // ]}
         />
       </>
     );
