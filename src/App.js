@@ -74,6 +74,15 @@ class App extends React.Component {
               }
             },
             {
+              selector: 'edge[interaction = "cc"]',
+              style: {
+                "line-color": "#FACD37",
+                "opacity": 0.666,
+                "z-index": 9,
+                "width": 4,
+              }
+            },
+            {
               selector: 'node[NodeType = "WhiteWine"]',
               style: {
                 "background-color": "white",
