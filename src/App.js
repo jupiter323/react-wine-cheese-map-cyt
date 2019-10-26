@@ -4,24 +4,35 @@ import Cytoscape from 'cytoscape';
 import CytoscapeComponent from 'react-cytoscapejs';
 import data from './assets/data.json'
 import cycssString from './assets/style.cycss'
+import _ from 'lodash'
 class App extends React.Component {
+  layoutPadding = 50;
+  aniDur = 500;
+  easing = 'linear';
+  allNodes = null;
+  allEles = null;
+  lastHighlighted = null;
+  lastUnhighlighted = null;
+
   constructor(props) {
     super(props)
     this.state = {
-      styleJson: null
+      styleJson: null,
+      nodeObject: {}
     }
   }
-  componentDidMount() {
-    fetch(cycssString)
-      .then((r) => r.text())
-      .then(styleJson => {
-        console.log(styleJson)
-        this.setState({ styleJson })
+  componentWillMount() {
+    fetch('https://cdn.rawgit.com/maxkfranz/3d4d3c8eb808bd95bae7/raw')
+      .then((r) => r.json())
+      .then(d => {
+        // this.setState({ styleJson })
+        // data = d
+        console.log(d)
       }).catch(err => {
         console.log(err)
       })
   }
-  
+
   generateNode = event => {
     const ele = event.target;
 
@@ -33,14 +44,16 @@ class App extends React.Component {
     const relativePosition = ele.relativePosition();
     const parent = ele.parent();
     const style = ele.style();
+    const closedNeighborhood = ele.closedNeighborhood()
+    const nonempty = ele.nonempty()
     // Trim down the element objects to only the data contained
-    const edgesData = ele.connectedEdges().map(ele => {return ele.data()});
-    const childrenData = ele.children().map(ele => {return ele.data()});
-    const ancestorsData = ele.ancestors().map(ele => {return ele.data()});
-    const descendantsData = ele.descendants().map(ele => {return ele.data()});
-    const siblingsData = ele.siblings().map(ele => {return ele.data()});
+    const edgesData = ele.connectedEdges().map(ele => { return ele.data() });
+    const childrenData = ele.children().map(ele => { return ele.data() });
+    const ancestorsData = ele.ancestors().map(ele => { return ele.data() });
+    const descendantsData = ele.descendants().map(ele => { return ele.data() });
+    const siblingsData = ele.siblings().map(ele => { return ele.data() });
 
-    const {timeStamp} = event;
+    const { timeStamp } = event;
     const {
       classes,
       data,
@@ -85,12 +98,150 @@ class App extends React.Component {
       isOrphan,
       relativePosition,
       // Styling
-      style
+      style,
+      closedNeighborhood,
+      nonempty
+
     };
     return nodeObject;
   }
+
+  handleCy = (cy) => {
+    this.allNodes = cy.nodes();
+    this.allEles = cy.elements();
+    const that = this
+    cy.on('select unselect', 'node', _.debounce(function (e) {
+      const node = that.generateNode(e);
+      console.log('nodeObject:', node);
+      if (node.nonempty) {
+        // showNodeInfo(node);
+
+        Promise.resolve().then(function () {
+          return that.highlight(node, cy);
+        });
+      } else {
+        // hideNodeInfo();
+        // clear();
+      }
+
+    }, 100));
+
+  }
+  isDirty = () => {
+    return this.lastHighlighted != null;
+  }
+  highlight = (node, cy) => {
+    var oldNhood = this.lastHighlighted;
+
+    var nhood = this.lastHighlighted = node.closedNeighborhood;
+    var others = this.lastUnhighlighted = cy.elements().not(nhood);
+    var that = this
+    var reset = function () {
+      cy.batch(function () {
+        others.addClass('hidden');
+        nhood.removeClass('hidden');
+
+        that.allEles.removeClass('faded highlighted');
+
+        nhood.addClass('highlighted');
+
+        others.nodes().forEach((n) => {
+          var p = n.data('orgPos');
+
+          n.position({ x: p.x, y: p.y });
+        });
+      });
+
+      return Promise.resolve().then(function () {
+        if (that.isDirty()) {
+          return fit();
+        } else {
+          return Promise.resolve();
+        };
+      }).then(function () {
+        return new Promise(resolve => setTimeout(resolve, that.aniDur))
+      });
+    };
+
+    var runLayout = function () {
+      var p = node.data['orgPos'];
+      var l = nhood.filter(':visible').makeLayout({
+        name: 'concentric',
+        fit: false,
+        animate: true,
+        animationDuration: that.aniDur,
+        animationEasing: that.easing,
+        boundingBox: {
+          x1: p.x - 1,
+          x2: p.x + 1,
+          y1: p.y - 1,
+          y2: p.y + 1
+        },
+        avoidOverlap: true,
+        concentric: function (ele) {
+          if (ele.same(node)) {
+            return 2;
+          } else {
+            return 1;
+          }
+        },
+        levelWidth: function () { return 1; },
+        padding: that.layoutPadding
+      });
+
+      var promise = cy.promiseOn('layoutstop');
+
+      l.run();
+
+      return promise;
+    };
+
+    var fit = function () {
+      return cy.animation({
+        fit: {
+          eles: nhood.filter(':visible'),
+          padding: that.layoutPadding
+        },
+        easing: that.easing,
+        duration: that.aniDur
+      }).play().promise();
+    };
+
+    var showOthersFaded = function () {
+      return setTimeout(() => {
+        cy.batch(function () {
+          others.removeClass('hidden').addClass('faded');
+        });
+      }, 250);
+    };
+
+    return Promise.resolve()
+      .then(reset)
+      .then(runLayout)
+      .then(fit)
+      .then(showOthersFaded)
+      ;
+
+  }
+
   render() {
     var { styleJson } = this.state
+    data.elements.nodes.forEach(function (n) {
+      var data = n.data;
+
+      data.NodeTypeFormatted = data.NodeType;
+
+      if (data.NodeTypeFormatted === 'RedWine') {
+        data.NodeTypeFormatted = 'Red Wine';
+      } else if (data.NodeTypeFormatted === 'WhiteWine') {
+        data.NodeTypeFormatted = 'White Wine';
+      }
+
+      n.data.orgPos = {
+        x: n.position.x,
+        y: n.position.y
+      };
+    });
     var elements = data.elements.nodes
     elements = elements.concat(data.elements.edges)
     return (
@@ -102,13 +253,8 @@ class App extends React.Component {
           selectionType={"single"}
           boxSelectionEnabled={false}
           autoungrabify={true}
-          layout={{ 'name': 'preset', 'padding': 50 }}
-          cy={(cy) => {
-            cy.on('tap', 'node', event => {
-              const nodeObject = this.generateNode(event);
-              console.log('nodeObject:', nodeObject);           
-            })
-          }}
+          layout={{ 'name': 'preset', 'padding': this.layoutPadding }}
+          cy={this.handleCy}
           stylesheet={[
             {
               selector: "core",
