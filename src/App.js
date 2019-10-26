@@ -5,6 +5,157 @@ import CytoscapeComponent from 'react-cytoscapejs';
 import data from './assets/data.json'
 import cycssString from './assets/style.cycss'
 import _ from 'lodash'
+const stylesheet = [
+  {
+    selector: "core",
+    style: {
+      "active-bg-color": "#fff",
+      "active-bg-opacity": 0.333
+    }
+  },
+  {
+    selector: "edge",
+    style: {
+      "curve-style": "haystack",
+      "haystack-radius": 0,
+      "opacity": 0.333,
+      "width": 2,
+      "z-index": 0,
+      "overlay-opacity": 0,
+      "events": "no"
+    }
+  },
+  {
+    selector: "node",
+    style: {
+      "width": 40,
+      "height": 40,
+      "font-size": 10,
+      "font-weight": "bold",
+      "min-zoomed-font-size": 4,
+      "content": "data(name)",
+      "text-valign": "center",
+      "text-halign": "center",
+      "color": "#000",
+      "text-outline-width": 2,
+      "text-outline-color": "#fff",
+      "text-outline-opacity": 1,
+      "overlay-color": "#fff"
+    }
+  },
+  {
+    selector: 'edge[interaction = "cc"]',
+    style: {
+      "line-color": "#FACD37",
+      "opacity": 0.666,
+      "z-index": 9,
+      "width": 4,
+    }
+  },
+  {
+    selector: 'node[NodeType = "Cheese"],node[NodeType = "CheeseType"]',
+    style: {
+      "background-color": "#FACD37",
+      "text-outline-color": "#FACD37",
+      "width": "mapData(Quality, 70, 100, 20, 50)",
+      "height": "mapData(Quality, 70, 100, 20, 50)",
+    }
+  },
+  {
+    selector: 'node[NodeType = "WhiteWine"]',
+    style: {
+      "background-color": "white",
+      "text-outline-color": "white"
+    }
+  },
+  {
+    selector: 'edge[interaction = "cw"]',
+    style: {
+      "line-color": "white"
+    }
+  },
+  {
+    selector: 'node[NodeType = "RedWine"]',
+    style: {
+      "background-color": "#DE3128",
+      "text-outline-color": "#DE3128"
+    }
+  },
+  {
+    selector: 'edge[interaction = "cr"]',
+    style: {
+      'line-color': '#DE3128'
+    }
+  },
+  {
+    selector: 'node[NodeType = "Cider"]',
+    style: {
+      'background-color': '#A4EB34',
+      'text-outline-color': '#A4EB34'
+    }
+  },
+  {
+    selector: 'node.highlighted',
+    style: {
+      'min-zoomed-font-size': 0,
+      'z-index': 9999
+    }
+  },
+  {
+    selector: 'edge.highlighted',
+    style: {
+      "opacity": 0.8,
+      "width": 4,
+      "z-index": 9999
+    }
+  },
+  {
+    selector: '.faded',
+    style: {
+      "events": "no"
+    }
+  },
+  {
+    selector: 'node.faded',
+    style: {
+      'opacity': 0.08
+    }
+  },
+  {
+    selector: 'edge.faded',
+    style: {
+      'opacity': 0.06
+    }
+  },
+  {
+    selector: '.hidden',
+    style: {
+      'display': 'none'
+    }
+  },
+  {
+    selector: '.highlighted',
+    style: {
+
+    }
+  },
+  {
+    selector: 'node:selected',
+    style: {
+      'width': 40,
+      'height': 40,
+      'border-color': 'rgb(187, 219, 247)',
+      'border-opacity': 0.5,
+      'border-width': 10
+    }
+  },
+  {
+    selector: '.filtered',
+    style: {
+      'display': 'none'
+    }
+  }
+]
 class App extends React.Component {
   layoutPadding = 50;
   aniDur = 500;
@@ -13,6 +164,8 @@ class App extends React.Component {
   allEles = null;
   lastHighlighted = null;
   lastUnhighlighted = null;
+  cy = null;
+
 
   constructor(props) {
     super(props)
@@ -21,13 +174,13 @@ class App extends React.Component {
       nodeObject: {}
     }
   }
+
   componentWillMount() {
     fetch('https://cdn.rawgit.com/maxkfranz/3d4d3c8eb808bd95bae7/raw')
       .then((r) => r.json())
       .then(d => {
-        // this.setState({ styleJson })
+        this.setState({ d })
         // data = d
-        console.log(d)
       }).catch(err => {
         console.log(err)
       })
@@ -105,39 +258,104 @@ class App extends React.Component {
     };
     return nodeObject;
   }
+  restoreElesPositions = (nhood) => {
+    return Promise.all(nhood.map((ele) => {
+      var p = ele.data('orgPos');
+
+      return ele.animation({
+        position: { x: p.x, y: p.y },
+        duration: this.aniDur,
+        easing: this.easing
+      }).play().promise();
+    }));
+  };
+
+  clear = () => {
+    if (!this.isDirty()) { return Promise.resolve(); }
+    this.cy.stop();
+    this.allNodes.stop();
+
+    var nhood = this.lastHighlighted;
+    var others = this.lastUnhighlighted;
+
+    this.lastHighlighted = this.lastUnhighlighted = null;
+
+    var hideOthers = () => {
+      // return new Promise(resolve=>setTimeout(() => {
+      //   others.addClass('hidden');
+      //   return resolve(new Promise(resolve => setTimeout(resolve, 125)))
+      // }, 125))
+      return setTimeout(() => {
+        others.addClass('hidden');
+        return new Promise(resolve => setTimeout(resolve, 125))
+      }, 125)
+    };
+
+    var showOthers = () => {
+      this.cy.batch(() => {
+        this.allEles.removeClass('hidden').removeClass('faded');
+      });
+
+      return new Promise((resolve) => setTimeout(resolve, this.aniDur))
+    };
+
+    var restorePositions = () => {
+      this.cy.batch(() => {
+        others.nodes().forEach((n) => {
+          var p = n.data('orgPos');
+
+          n.position({ x: p.x, y: p.y });
+        });
+      });
+
+      return this.restoreElesPositions(nhood.nodes());
+    };
+
+    var resetHighlight = () => {
+      nhood.removeClass('highlighted');
+    };
+
+    return Promise.resolve()
+      .then(resetHighlight)
+      .then(hideOthers)
+      .then(restorePositions)
+      .then(showOthers)
+      ;
+  }
 
   handleCy = (cy) => {
     this.allNodes = cy.nodes();
     this.allEles = cy.elements();
+    this.cy = cy;
     const that = this
     cy.on('select unselect', 'node', _.debounce(function (e) {
       const node = that.generateNode(e);
-      console.log('nodeObject:', node);
-      if (node.nonempty) {
+      if (node.selected) {
         // showNodeInfo(node);
 
         Promise.resolve().then(function () {
-          return that.highlight(node, cy);
+          return that.highlight(node);
         });
       } else {
         // hideNodeInfo();
-        // clear();
+        that.clear();
       }
 
     }, 100));
+
 
   }
   isDirty = () => {
     return this.lastHighlighted != null;
   }
-  highlight = (node, cy) => {
+  highlight = (node) => {
     var oldNhood = this.lastHighlighted;
 
     var nhood = this.lastHighlighted = node.closedNeighborhood;
-    var others = this.lastUnhighlighted = cy.elements().not(nhood);
+    var others = this.lastUnhighlighted = this.cy.elements().not(nhood);
     var that = this
     var reset = function () {
-      cy.batch(function () {
+      that.cy.batch(function () {
         others.addClass('hidden');
         nhood.removeClass('hidden');
 
@@ -163,7 +381,7 @@ class App extends React.Component {
       });
     };
 
-    var runLayout = function () {
+    var runLayout = () => {
       var p = node.data['orgPos'];
       var l = nhood.filter(':visible').makeLayout({
         name: 'concentric',
@@ -189,27 +407,27 @@ class App extends React.Component {
         padding: that.layoutPadding
       });
 
-      var promise = cy.promiseOn('layoutstop');
+      var promise = this.cy.promiseOn('layoutstop');
 
       l.run();
 
       return promise;
     };
 
-    var fit = function () {
-      return cy.animation({
+    var fit = () => {
+      return this.cy.animation({
         fit: {
           eles: nhood.filter(':visible'),
-          padding: that.layoutPadding
+          padding: this.layoutPadding
         },
-        easing: that.easing,
-        duration: that.aniDur
+        easing: this.easing,
+        duration: this.aniDur
       }).play().promise();
     };
 
-    var showOthersFaded = function () {
+    var showOthersFaded = () => {
       return setTimeout(() => {
-        cy.batch(function () {
+        this.cy.batch(function () {
           others.removeClass('hidden').addClass('faded');
         });
       }, 250);
@@ -249,163 +467,13 @@ class App extends React.Component {
         <CytoscapeComponent
           className="App-header"
           elements={elements}
-          motionBlur
+          motionBlur={true}
           selectionType={"single"}
           boxSelectionEnabled={false}
           autoungrabify={true}
           layout={{ 'name': 'preset', 'padding': this.layoutPadding }}
           cy={this.handleCy}
-          stylesheet={[
-            {
-              selector: "core",
-              style: {
-                "active-bg-color": "#fff",
-                "active-bg-opacity": 0.333
-              }
-            },
-            {
-              selector: "edge",
-              style: {
-                "curve-style": "haystack",
-                "haystack-radius": 0,
-                "opacity": 0.333,
-                "width": 2,
-                "z-index": 0,
-                "overlay-opacity": 0,
-                "events": "no"
-              }
-            },
-            {
-              selector: "node",
-              style: {
-                "width": 40,
-                "height": 40,
-                "font-size": 10,
-                "font-weight": "bold",
-                "min-zoomed-font-size": 4,
-                "content": "data(name)",
-                "text-valign": "center",
-                "text-halign": "center",
-                "color": "#000",
-                "text-outline-width": 2,
-                "text-outline-color": "#fff",
-                "text-outline-opacity": 1,
-                "overlay-color": "#fff"
-              }
-            },
-            {
-              selector: 'edge[interaction = "cc"]',
-              style: {
-                "line-color": "#FACD37",
-                "opacity": 0.666,
-                "z-index": 9,
-                "width": 4,
-              }
-            },
-            {
-              selector: 'node[NodeType = "Cheese"],node[NodeType = "CheeseType"]',
-              style: {
-                "background-color": "#FACD37",
-                "text-outline-color": "#FACD37",
-                "width": "mapData(Quality, 70, 100, 20, 50)",
-                "height": "mapData(Quality, 70, 100, 20, 50)",
-              }
-            },
-            {
-              selector: 'node[NodeType = "WhiteWine"]',
-              style: {
-                "background-color": "white",
-                "text-outline-color": "white"
-              }
-            },
-            {
-              selector: 'edge[interaction = "cw"]',
-              style: {
-                "line-color": "white"
-              }
-            },
-            {
-              selector: 'node[NodeType = "RedWine"]',
-              style: {
-                "background-color": "#DE3128",
-                "text-outline-color": "#DE3128"
-              }
-            },
-            {
-              selector: 'edge[interaction = "cr"]',
-              style: {
-                'line-color': '#DE3128'
-              }
-            },
-            {
-              selector: 'node[NodeType = "Cider"]',
-              style: {
-                'background-color': '#A4EB34',
-                'text-outline-color': '#A4EB34'
-              }
-            },
-            {
-              selector: 'node.highlighted',
-              style: {
-                'min-zoomed-font-size': 0,
-                'z-index': 9999
-              }
-            },
-            {
-              selector: 'edge.highlighted',
-              style: {
-                "opacity": 0.8,
-                "width": 4,
-                "z-index": 9999
-              }
-            },
-            {
-              selector: '.faded',
-              style: {
-                "events": "no"
-              }
-            },
-            {
-              selector: 'node.faded',
-              style: {
-                'opacity': 0.08
-              }
-            },
-            {
-              selector: 'edge.faded',
-              style: {
-                'opacity': 0.06
-              }
-            },
-            {
-              selector: '.hidden',
-              style: {
-                'display': 'none'
-              }
-            },
-            {
-              selector: '.highlighted',
-              style: {
-
-              }
-            },
-            {
-              selector: 'node:selected',
-              style: {
-                'width': 40,
-                'height': 40,
-                'border-color': 'rgb(187, 219, 247)',
-                'border-opacity': 0.5,
-                'border-width': 10
-              }
-            },
-            {
-              selector: '.filtered',
-              style: {
-                'display': 'none'
-              }
-            }
-          ]}
+          stylesheet={stylesheet}
 
         />
       </>
