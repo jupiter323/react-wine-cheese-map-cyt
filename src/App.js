@@ -5,6 +5,7 @@ import CytoscapeComponent from 'react-cytoscapejs';
 import data from './assets/data.json'
 import cycssString from './assets/style.cycss'
 import _ from 'lodash'
+import Information from './components/Information'
 const stylesheet = [
   {
     selector: "core",
@@ -157,6 +158,7 @@ const stylesheet = [
   }
 ]
 class App extends React.Component {
+  elements = []
   layoutPadding = 50;
   aniDur = 500;
   easing = 'linear';
@@ -170,22 +172,57 @@ class App extends React.Component {
   constructor(props) {
     super(props)
     this.state = {
-      styleJson: null,
-      nodeObject: {}
+      infoShow: false
     }
   }
 
   componentWillMount() {
-    fetch('https://cdn.rawgit.com/maxkfranz/3d4d3c8eb808bd95bae7/raw')
-      .then((r) => r.json())
-      .then(d => {
-        this.setState({ d })
-        // data = d
-      }).catch(err => {
-        console.log(err)
-      })
-  }
+    data.elements.nodes.forEach(function (n) {
+      var data = n.data;
 
+      data.NodeTypeFormatted = data.NodeType;
+
+      if (data.NodeTypeFormatted === 'RedWine') {
+        data.NodeTypeFormatted = 'Red Wine';
+      } else if (data.NodeTypeFormatted === 'WhiteWine') {
+        data.NodeTypeFormatted = 'White Wine';
+      }
+
+      n.data.orgPos = {
+        x: n.position.x,
+        y: n.position.y
+      };
+    });
+    this.elements = data.elements.nodes
+    this.elements = this.elements.concat(data.elements.edges)
+  }
+  componentDidMount() {
+    this.cy.on('free', 'node', (e) => {
+      var n = e.cyTarget;
+      var p = n.position();
+
+      n.data('orgPos', {
+        x: p.x,
+        y: p.y
+      });
+    });
+
+    this.cy.on('select unselect', 'node', _.debounce((e) => {
+      const node = this.generateNode(e);
+      if (node.selected) {
+        this.showNodeInfo(node);
+
+        Promise.resolve().then(() => {
+          return this.highlight(node);
+        });
+      } else {
+        this.hideNodeInfo();
+        this.clear();
+      }
+
+    }, 100));
+
+  }
   generateNode = event => {
     const ele = event.target;
 
@@ -281,14 +318,11 @@ class App extends React.Component {
     this.lastHighlighted = this.lastUnhighlighted = null;
 
     var hideOthers = () => {
-      // return new Promise(resolve=>setTimeout(() => {
-      //   others.addClass('hidden');
-      //   return resolve(new Promise(resolve => setTimeout(resolve, 125)))
-      // }, 125))
-      return setTimeout(() => {
+      return new Promise(resolve => setTimeout(() => {
         others.addClass('hidden');
-        return new Promise(resolve => setTimeout(resolve, 125))
-      }, 125)
+        return resolve(new Promise(resolve => setTimeout(resolve, 125)))
+      }, 125))
+
     };
 
     var showOthers = () => {
@@ -323,27 +357,21 @@ class App extends React.Component {
       ;
   }
 
+  showNodeInfo = (node) => {
+    // alert()
+    // $('#info').html(infoTemplate(node.data())).show();
+    this.setState({ infoShow: true })
+  }
+
+  hideNodeInfo = () => {
+    // $('#info').hide();
+    this.setState({ infoShow: false })
+  }
+
   handleCy = (cy) => {
     this.allNodes = cy.nodes();
     this.allEles = cy.elements();
     this.cy = cy;
-    const that = this
-    cy.on('select unselect', 'node', _.debounce(function (e) {
-      const node = that.generateNode(e);
-      if (node.selected) {
-        // showNodeInfo(node);
-
-        Promise.resolve().then(function () {
-          return that.highlight(node);
-        });
-      } else {
-        // hideNodeInfo();
-        that.clear();
-      }
-
-    }, 100));
-
-
   }
   isDirty = () => {
     return this.lastHighlighted != null;
@@ -442,31 +470,14 @@ class App extends React.Component {
 
   }
 
+
   render() {
-    var { styleJson } = this.state
-    data.elements.nodes.forEach(function (n) {
-      var data = n.data;
-
-      data.NodeTypeFormatted = data.NodeType;
-
-      if (data.NodeTypeFormatted === 'RedWine') {
-        data.NodeTypeFormatted = 'Red Wine';
-      } else if (data.NodeTypeFormatted === 'WhiteWine') {
-        data.NodeTypeFormatted = 'White Wine';
-      }
-
-      n.data.orgPos = {
-        x: n.position.x,
-        y: n.position.y
-      };
-    });
-    var elements = data.elements.nodes
-    elements = elements.concat(data.elements.edges)
+    var { infoShow } = this.state
     return (
       <>
         <CytoscapeComponent
-          className="App-header"
-          elements={elements}
+          className="cy"
+          elements={this.elements}
           motionBlur={true}
           selectionType={"single"}
           boxSelectionEnabled={false}
@@ -476,6 +487,7 @@ class App extends React.Component {
           stylesheet={stylesheet}
 
         />
+        <Information className={infoShow ? "info" : "hidden"}/>
       </>
     );
   }
