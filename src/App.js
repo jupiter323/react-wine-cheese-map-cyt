@@ -172,7 +172,8 @@ class App extends React.Component {
   constructor(props) {
     super(props)
     this.state = {
-      infoShow: false
+      infoShow: false,
+      node: {}
     }
   }
 
@@ -196,6 +197,7 @@ class App extends React.Component {
     this.elements = data.elements.nodes
     this.elements = this.elements.concat(data.elements.edges)
   }
+  
   componentDidMount() {
     this.cy.on('free', 'node', (e) => {
       var n = e.cyTarget;
@@ -209,8 +211,9 @@ class App extends React.Component {
 
     this.cy.on('select unselect', 'node', _.debounce((e) => {
       const node = this.generateNode(e);
+      this.setState({ node })
       if (node.selected) {
-        this.showNodeInfo(node);
+        this.showNodeInfo();
 
         Promise.resolve().then(() => {
           return this.highlight(node);
@@ -223,6 +226,7 @@ class App extends React.Component {
     }, 100));
 
   }
+
   generateNode = event => {
     const ele = event.target;
 
@@ -295,6 +299,7 @@ class App extends React.Component {
     };
     return nodeObject;
   }
+
   restoreElesPositions = (nhood) => {
     return Promise.all(nhood.map((ele) => {
       var p = ele.data('orgPos');
@@ -357,25 +362,18 @@ class App extends React.Component {
       ;
   }
 
-  showNodeInfo = (node) => {
-    // alert()
-    // $('#info').html(infoTemplate(node.data())).show();
+  showNodeInfo = () => {
     this.setState({ infoShow: true })
   }
 
   hideNodeInfo = () => {
-    // $('#info').hide();
     this.setState({ infoShow: false })
   }
-
-  handleCy = (cy) => {
-    this.allNodes = cy.nodes();
-    this.allEles = cy.elements();
-    this.cy = cy;
-  }
+   
   isDirty = () => {
     return this.lastHighlighted != null;
   }
+
   highlight = (node) => {
     var oldNhood = this.lastHighlighted;
 
@@ -470,9 +468,40 @@ class App extends React.Component {
 
   }
 
+  handleCy = (cy) => {
+    this.allNodes = cy.nodes();
+    this.allEles = cy.elements();
+    this.cy = cy;
+    
+    this.cy.on('free', 'node', (e) => {
+      var n = e.cyTarget;
+      var p = n.position();
+
+      n.data('orgPos', {
+        x: p.x,
+        y: p.y
+      });
+    });
+
+    this.cy.on('select unselect', 'node', _.debounce((e) => {
+      const node = this.generateNode(e);
+      this.setState({ node })
+      if (node.selected) {
+        this.showNodeInfo();
+
+        Promise.resolve().then(() => {
+          return this.highlight(node);
+        });
+      } else {
+        this.hideNodeInfo();
+        this.clear();
+      }
+
+    }, 100));
+  }
 
   render() {
-    var { infoShow } = this.state
+    var { infoShow,node } = this.state
     return (
       <>
         <CytoscapeComponent
@@ -487,7 +516,7 @@ class App extends React.Component {
           stylesheet={stylesheet}
 
         />
-        <Information className={infoShow ? "info" : "hidden"}/>
+        {node.data&&<Information className={infoShow ? "info" : "hidden"} data={node.data}/>}
       </>
     );
   }
