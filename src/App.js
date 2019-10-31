@@ -6,6 +6,7 @@ import data from './assets/data.json'
 import cycssString from './assets/style.cycss'
 import _ from 'lodash'
 import Information from './components/Information'
+import Search from './components/Search';
 const stylesheet = [
   {
     selector: "core",
@@ -159,6 +160,7 @@ const stylesheet = [
 ]
 class App extends React.Component {
   elements = []
+  nodes = []
   layoutPadding = 50;
   aniDur = 500;
   easing = 'linear';
@@ -194,10 +196,10 @@ class App extends React.Component {
         y: n.position.y
       };
     });
-    this.elements = data.elements.nodes
+    this.elements = this.nodes = data.elements.nodes
     this.elements = this.elements.concat(data.elements.edges)
   }
-  
+
   componentDidMount() {
     this.cy.on('free', 'node', (e) => {
       var n = e.cyTarget;
@@ -369,7 +371,7 @@ class App extends React.Component {
   hideNodeInfo = () => {
     this.setState({ infoShow: false })
   }
-   
+
   isDirty = () => {
     return this.lastHighlighted != null;
   }
@@ -472,7 +474,7 @@ class App extends React.Component {
     this.allNodes = cy.nodes();
     this.allEles = cy.elements();
     this.cy = cy;
-    
+
     this.cy.on('free', 'node', (e) => {
       var n = e.cyTarget;
       var p = n.position();
@@ -501,7 +503,7 @@ class App extends React.Component {
   }
 
   render() {
-    var { infoShow,node } = this.state
+    var { infoShow, node } = this.state
     return (
       <>
         <CytoscapeComponent
@@ -516,7 +518,9 @@ class App extends React.Component {
           stylesheet={stylesheet}
 
         />
-        {node.data&&<Information className={infoShow ? "info" : "hidden"} data={node.data}/>}
+
+        <Search elements={this.nodes} />
+        {node.data && <Information className={infoShow ? "info" : "hidden"} data={node.data} />}
       </>
     );
   }
