@@ -224,7 +224,13 @@ body.calc #loading {
 }
 
 #filters {
-  display: none;
+  /* display: none; */
+  position: absolute;
+  right: 0;
+  top: 2em;
+  background: white;
+  border-radius: 0.5em;
+
 }
 
 .qtip #filter {

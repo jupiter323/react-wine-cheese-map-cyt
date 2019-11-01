@@ -6,6 +6,7 @@ import data from './assets/data.json'
 import _ from 'lodash'
 import Information from './components/Information'
 import Search from './components/Search';
+import Filters from './components/Filters';
 const stylesheet = [
   {
     selector: "core",
@@ -174,8 +175,28 @@ class App extends React.Component {
     this.state = {
       infoShow: false,
       searchListShow: false,
+      showFilters: false,
       node: {},
-      allNodes: null
+      allNodes: null,
+      filterQuery: {
+        "soft": true,
+        "semiSoft": true,
+        "semiHard": true,
+        "hard": true,
+        "na": true,
+        "chsEn": true,
+        "chsFr": true,
+        "chsIt": true,
+        "chsUsa": true,
+        "chsEs": true,
+        "chsCh": true,
+        "chsEuro": true,
+        "chsNworld": true,
+        "chsNa": true,
+        "white": true,
+        "red": true,
+        "cider": true
+      }
     }
   }
 
@@ -213,6 +234,7 @@ class App extends React.Component {
 
     this.cy.on('tap', () => {
       this.searchListShowSet(false)
+      this.setState({ showFilters: false })
     });
 
     this.cy.on('select unselect', 'node', _.debounce((e) => {
@@ -497,8 +519,75 @@ class App extends React.Component {
 
   }
 
+  handleFilter = () => {
+    var { showFilters } = this.state
+    this.setState({ showFilters: !showFilters })
+  }
+
+  handleShowcheckState = () => {
+    this.setState({ err: null })
+    var { filterQuery, allNodes } = this.state
+    var { soft, semiSoft, na, semiHard, hard, red, white, cider, chsEn, chsFr, chsIt, chsUsa, chsEs, chsCh, chsEuro, chsNworld, chsNa } = filterQuery
+
+    this.cy.batch(() => {
+
+      allNodes.forEach((n) => {
+        var type = n.data('NodeType');
+
+        n.removeClass('filtered');
+
+        var filter = () => {
+          n.addClass('filtered');
+        };
+
+        if (type === 'Cheese' || type === 'CheeseType') {
+
+          var cType = n.data('Type');
+          var cty = n.data('Country');
+
+          if (
+            // moisture
+            (cType === 'Soft' && !soft)
+            || (cType === 'Semi-soft' && !semiSoft)
+            || (cType === undefined && !na)
+            || (cType === 'Semi-hard' && !semiHard)
+            || (cType === 'Hard' && !hard)
+
+            // country
+            || (cty === 'England' && !chsEn)
+            || (cty === 'France' && !chsFr)
+            || (cty === 'Italy' && !chsIt)
+            || (cty === 'US' && !chsUsa)
+            || (cty === 'Spain' && !chsEs)
+            || (cty === 'Switzerland' && !chsCh)
+            || ((cty === 'Holland' || cty === 'Ireland' || cty === 'Portugal' || cty === 'Scotland' || cty === 'Wales') && !chsEuro)
+            || ((cty === 'Canada' || cty === 'Australia') && !chsNworld)
+            || (cty === undefined && !chsNa)
+          ) {
+            filter();
+          }
+
+        } else if (type === 'RedWine') {
+
+          if (!red) { filter(); }
+
+        } else if (type === 'WhiteWine') {
+
+          if (!white) { filter(); }
+
+        } else if (type === 'Cider') {
+
+          if (!cider) { filter(); }
+
+        }
+
+      });
+
+    });
+  }
+
   render() {
-    var { infoShow, node, allNodes } = this.state
+    var { infoShow, node, allNodes, showFilters } = this.state
     return (
       <>
         <CytoscapeComponent
@@ -515,7 +604,9 @@ class App extends React.Component {
         />
 
         <Search allNodes={allNodes} handleCickInformation={this.handleCickInformation} searchListShowSet={this.searchListShowSet} searchListShow={this.state.searchListShow} />
-        {node.data && <Information className={infoShow ? "info" : "hidden"} data={node.data} />}
+        {node.data && infoShow && <Information data={node.data} className="info" />}
+        <button id="filter" className="btn btn-default" onClick={this.handleFilter}><i className="fa fa-filter"></i>Filter</button>
+        {showFilters && <Filters filterQuery={this.state.filterQuery} handleShowcheckState={this.handleShowcheckState} />}
       </>
     );
   }
