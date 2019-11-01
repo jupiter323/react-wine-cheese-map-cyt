@@ -163,7 +163,6 @@ class App extends React.Component {
   layoutPadding = 50;
   aniDur = 500;
   easing = 'linear';
-  allNodes = null;
   allEles = null;
   lastHighlighted = null;
   lastUnhighlighted = null;
@@ -174,7 +173,9 @@ class App extends React.Component {
     super(props)
     this.state = {
       infoShow: false,
-      node: {}
+      searchListShow: false,
+      node: {},
+      allNodes: null
     }
   }
 
@@ -210,6 +211,10 @@ class App extends React.Component {
       });
     });
 
+    this.cy.on('tap', () => {
+      this.searchListShowSet(false)
+    });
+
     this.cy.on('select unselect', 'node', _.debounce((e) => {
       const node = this.generateNode(e);
       this.setState({ node })
@@ -226,8 +231,13 @@ class App extends React.Component {
 
     }, 100));
 
+    this.setState({ allNodes: this.cy.nodes() })
+
   }
 
+  searchListShowSet = (show) => {
+    this.setState({ searchListShow: show })
+  }
   generateNode = event => {
     const ele = event.target;
 
@@ -316,7 +326,7 @@ class App extends React.Component {
   clear = () => {
     if (!this.isDirty()) { return Promise.resolve(); }
     this.cy.stop();
-    this.allNodes.stop();
+    this.state.allNodes.stop();
 
     var nhood = this.lastHighlighted;
     var others = this.lastUnhighlighted;
@@ -470,13 +480,25 @@ class App extends React.Component {
   }
 
   handleCy = (cy) => {
-    this.allNodes = cy.nodes();
     this.allEles = cy.elements();
     this.cy = cy;
   }
 
+  handleCickInformation = (id) => {
+    var n = this.cy.getElementById(id)
+    this.cy.batch(() => {
+      this.state.allNodes.unselect();
+
+      n.select();
+    });
+
+    this.searchListShowSet(false);
+    this.showNodeInfo(n);
+
+  }
+
   render() {
-    var { infoShow, node } = this.state
+    var { infoShow, node, allNodes } = this.state
     return (
       <>
         <CytoscapeComponent
@@ -492,7 +514,7 @@ class App extends React.Component {
 
         />
 
-        <Search elements={this.nodes} />
+        <Search allNodes={allNodes} handleCickInformation={this.handleCickInformation} searchListShowSet={this.searchListShowSet} searchListShow={this.state.searchListShow} />
         {node.data && <Information className={infoShow ? "info" : "hidden"} data={node.data} />}
       </>
     );
