@@ -3,7 +3,6 @@ import './App.css';
 import Cytoscape from 'cytoscape';
 import CytoscapeComponent from 'react-cytoscapejs';
 import data from './assets/data.json'
-import cycssString from './assets/style.cycss'
 import _ from 'lodash'
 import Information from './components/Information'
 import Search from './components/Search';
@@ -474,32 +473,6 @@ class App extends React.Component {
     this.allNodes = cy.nodes();
     this.allEles = cy.elements();
     this.cy = cy;
-
-    this.cy.on('free', 'node', (e) => {
-      var n = e.cyTarget;
-      var p = n.position();
-
-      n.data('orgPos', {
-        x: p.x,
-        y: p.y
-      });
-    });
-
-    this.cy.on('select unselect', 'node', _.debounce((e) => {
-      const node = this.generateNode(e);
-      this.setState({ node })
-      if (node.selected) {
-        this.showNodeInfo();
-
-        Promise.resolve().then(() => {
-          return this.highlight(node);
-        });
-      } else {
-        this.hideNodeInfo();
-        this.clear();
-      }
-
-    }, 100));
   }
 
   render() {
