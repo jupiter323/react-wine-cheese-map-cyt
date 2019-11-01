@@ -9,13 +9,6 @@ class Search extends React.Component {
         }
     }
 
-
-    componentWillReceiveProps(nextProps) {
-        // this.setState({
-        //     list: nextProps.elements
-        // });
-    }
-
     componentDidMount() {
         this.setState({
             list: this.props.allNodes
@@ -103,7 +96,7 @@ class Search extends React.Component {
         return (
             <>
                 <div className="search-wrapper" >
-                    <input type="text" className="form-control" id="search" placeholder="&#xf002; Search" onChange={this.handleChange} onFocus={this.handleFocus} />
+                    <input type="text" className="form-control" id="search" placeholder="Search" onChange={this.handleChange} onFocus={this.handleFocus} />
                     {this.state.filtered.length != 0 && this.props.searchListShow && <div className={"information-wrapper"}>
                         {this.state.filtered.map(item => (
                             <div key={item.id} className={"information"} onClick={() => this.props.handleCickInformation(item.id)}>

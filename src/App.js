@@ -1,12 +1,12 @@
 import React from 'react';
 import './App.css';
-import Cytoscape from 'cytoscape';
 import CytoscapeComponent from 'react-cytoscapejs';
 import data from './assets/data.json'
 import _ from 'lodash'
 import Information from './components/Information'
 import Search from './components/Search';
 import Filters from './components/Filters';
+import About from './components/About';
 const stylesheet = [
   {
     selector: "core",
@@ -158,6 +158,7 @@ const stylesheet = [
     }
   }
 ]
+
 class App extends React.Component {
   elements = []
   nodes = []
@@ -234,7 +235,8 @@ class App extends React.Component {
 
     this.cy.on('tap', () => {
       this.searchListShowSet(false)
-      this.setState({ showFilters: false })
+      this.handleFilter(false)
+      this.handleAbout(false)
     });
 
     this.cy.on('select unselect', 'node', _.debounce((e) => {
@@ -257,9 +259,6 @@ class App extends React.Component {
 
   }
 
-  searchListShowSet = (show) => {
-    this.setState({ searchListShow: show })
-  }
   generateNode = event => {
     const ele = event.target;
 
@@ -519,11 +518,6 @@ class App extends React.Component {
 
   }
 
-  handleFilter = () => {
-    var { showFilters } = this.state
-    this.setState({ showFilters: !showFilters })
-  }
-
   handleShowcheckState = () => {
     this.setState({ err: null })
     var { filterQuery, allNodes } = this.state
@@ -586,8 +580,43 @@ class App extends React.Component {
     });
   }
 
+  handleClear = () => {
+    this.handleAbout(false)
+    this.handleFilter(false)
+    this.searchListShowSet(false)
+    this.hideNodeInfo()
+    if (this.isDirty()) {
+      this.clear();
+    } else {
+      this.state.allNodes.unselect();
+
+      this.cy.stop();
+
+      this.cy.animation({
+        fit: {
+          eles: this.cy.elements(),
+          padding: this.layoutPadding
+        },
+        duration: this.aniDur,
+        easing: this.easing
+      }).play();
+    }
+  }
+
+  searchListShowSet = (show) => {
+    this.setState({ searchListShow: show })
+  }
+
+  handleFilter = (showFilters) => {
+    this.setState({ showFilters })
+  }
+
+  handleAbout = (showAbout) => {
+    this.setState({ showAbout })
+  }
+
   render() {
-    var { infoShow, node, allNodes, showFilters } = this.state
+    var { infoShow, node, allNodes, showFilters, showAbout, filterQuery, searchListShow } = this.state
     return (
       <>
         <CytoscapeComponent
@@ -603,10 +632,13 @@ class App extends React.Component {
 
         />
 
-        <Search allNodes={allNodes} handleCickInformation={this.handleCickInformation} searchListShowSet={this.searchListShowSet} searchListShow={this.state.searchListShow} />
+        <Search allNodes={allNodes} handleCickInformation={this.handleCickInformation} searchListShowSet={this.searchListShowSet} searchListShow={searchListShow} />
+        <button className="filter" onClick={() => this.handleFilter(true)}>Filter</button>
+        <button className="reset" onClick={this.handleClear}>Clear</button>
+        <button className="about" onClick={() => this.handleAbout(true)}>About</button>
         {node.data && infoShow && <Information data={node.data} className="info" />}
-        <button id="filter" className="btn btn-default" onClick={this.handleFilter}><i className="fa fa-filter"></i>Filter</button>
-        {showFilters && <Filters filterQuery={this.state.filterQuery} handleShowcheckState={this.handleShowcheckState} />}
+        {showFilters && <Filters filterQuery={filterQuery} handleShowcheckState={this.handleShowcheckState} />}
+        {showAbout && <About />}
       </>
     );
   }
